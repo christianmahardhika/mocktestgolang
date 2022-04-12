@@ -1,4 +1,4 @@
-# Unit testing dengan mock repository pada golang
+# Unit testing dengan Mock Repository pada Golang
 
 *preface*: ini adalah tulisan pertama saya di medium. Semoga betah membacanya, ya :D 
 
