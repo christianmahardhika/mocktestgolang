@@ -1,15 +1,17 @@
 # Unit testing dengan mock repository pada golang
 
-Halo ini adalah tulisan pertama saya di Medium semoga betah menbacanya :D. 
+*preface*: ini adalah tulisan pertama saya di medium. Semoga betah membacanya, ya :D 
 
-Kali ini kita akan membahas tentang *unit test* di Golang. Unit test merupakan hal penting dalam men-*develop* sebuah aplikasi, dengan unit test kita dapat mengetahui aplikasi kita berjalan sesuai dengan ekspektasi atau malah banyak error yang dihasilkan :(. 
+Tulisan perdana ini, saya akan membahas tentang ***unit-test*** **di Golang**. 
 
-Unit Test juga dapat diintegrasikan dengan **CICD** (*Continous Integration Continous Deployment*) agar kualitas code kita terjaga dan tetap sesuai dengan ekspektasi bisnis model yang direncanakan. untuk proses integrasi ke **CICD** akan dibahas ditulisan selanjutnya ya ;)
+*Unit test* merupakan hal penting dalam proses *develop* sebuah aplikasi, dengan unit-test kita dapat mengetahui aplikasi kita berjalan sesuai dengan ekspektasi atau justru malah banyak *error* :sad
 
-Udah ya basa-basinya..., Yuk *cusss* langsung aja
+Unit Test juga dapat diintegrasikan dengan **CICD** (*Continous Integration Continous Deployment*) agar kualitas code kita terjaga dan tetap sesuai dengan ekspektasi bisnis model yang direncanakan. Terkait proses integrasi ke **CICD** akan dibahas ditulisan selanjutnya ya ;)
 
-## Arsitektur Aplikasi
-Dalam aplikasi ini terdapat beberapa layer yang memisahkan *entity* *bisnis logic* dengan *repository* (data) 
+Oke, cukup "pengantar"-nya. Sekarang langsung *cuss* ke pembahasan, ya.
+
+## 1. Arsitektur & Bisnis Use Case Aplikasi
+Tutorial ini kita akan membuat aplikasi *backend* pencatat ***Todo App***. Dalam aplikasi ini terdapat beberapa layer yang memisahkan *entity* *bisnis logic* dengan *repository* (data) 
 
 ```text
  ./service
@@ -19,14 +21,14 @@ Dalam aplikasi ini terdapat beberapa layer yang memisahkan *entity* *bisnis logi
 main.go
 ```
 
-### Model
+### a. Model
 Model berisi *entity* atau data model pada sebuah domain. *Entity* pada tutorial ini berupa objek yang berisi kumpulan *data structure* yang merepresentasikan domain Aplikasi Todo. 
 
-*Gampangnya* model disini jadi *column* atau *field* pada database/rest-api. 
+*Kalo diibaratkan* model disini jadi *column* atau *field* pada database/rest-api. 
 
 Untuk lebih jelasnya bisa kepo [kesini](https://www.tutorialspoint.com/dbms/er_model_basic_concepts.htm) atau [sini](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
 
-kita buat modelnya dulu ```model.go```
+Nah, kita buat dulu ```model.go```
 ```go
 package service
 
@@ -49,11 +51,11 @@ type TodoAll struct {
 
 Model yang kita buat terdiri dari *entity* **Todo**, **TodoDetail**, dan **TodoAll**
 
-### Repository
+### b. Repository
 
-Bertugas sebagai sumber data di aplikasi Todo ini. Kita bisa berinteraksi dengan database melalui Repository ini. Kalo pengen tau mendalam tentang apa itu repository bisa [kemari](https://medium.com/@Dewey92/repository-pattern-what-e47ddee3364d) 
+Bertugas sebagai sumber data pada aplikasi. *Business use case* / *logic* aplikasi berinteraksi dengan database melalui **repository**. Kalo pengen tau mendalam tentang apa itu **repository** bisa [kemari](https://medium.com/@Dewey92/repository-pattern-what-e47ddee3364d) 
 
-yuk kita buat repositorynya ```repository.go```
+Yuk, mari buat ```repository.go```
 
 ```go
 package service
@@ -66,13 +68,13 @@ type Repository interface {
 }
 ```
 
-Tutorial kali ini kita cuma define [*contract*](https://refactoring.guru/design-patterns/abstract-factory) atau *interface*-nya aja ya. Lengkapnya di tutorial selanjutnya ;)
+Pada tutorial ini kita cuma define [*contract*](https://refactoring.guru/design-patterns/abstract-factory) atau *interface*-nya dari **repository**.
 
-### Use Case
+### c. Use Case
 
-Nah disini kita jabarin tuh aplikasinya mau ngapain aja. Jadi *use case* disini merupakan representasi dari bisnis logic dari aplikasi (dalam hal ini Aplikasi Todo)
+Nah disini, berisi fitur *logic* aplikasinya mau/bisa ngapain aja. Jadi *use case* disini merupakan representasi dari *bisnis logic* dari suatu aplikasi aplikasi (dalam hal ini **Aplikasi Todo**)
 
-kita *namain* ```usecase.go```
+Kita *namain* filenya ```usecase.go```
 ```go
 package service
 
@@ -136,20 +138,22 @@ func (uc *useCase) GetTodoById(id int) (*TodoAll, error){
 }
 ```
 
-Aplikasi ini bisa *nyimpen* dan *tampilin* **Todo List**
+Aplikasi punya kemampuan untuk menyimpan dan menampilkan **list todo**
 
-## Testing Usecase
+## 2. Testing Usecase
 
-Nah sampe juga di Part yang ditunggu. Disini kita akan pake [testify](https://github.com/stretchr/testify) karena lengkap sudah ada package [assertion](https://github.com/stretchr/testify#assert-package) dan [mock](https://github.com/stretchr/testify#mock-package) kamu bisa install dengan cara berikut yaaa!
+Nah sampe juga di ***part*** yang ditunggu. Disini kita akan pake *package* [testify](https://github.com/stretchr/testify) karena lengkap sudah ada fungsi [assertion](https://github.com/stretchr/testify#assert-package) dan [mock](https://github.com/stretchr/testify#mock-package). 
+
+Cara install bisa *ikutin* cara di bawah ***yaaa!***
 
 ```bash
 go get github.com/stretchr/testify
 ```
 
-### Assertion
-fungsi nya untuk bandingin hasil test sesuai ekspektasi atau engga. untuk yang belum tau apa itu assertion bisa [kunjungin](https://www.tutorialspoint.com/software_testing_dictionary/assertion_testing.htm)
+### a. Assertion
+fungsi nya untuk membandingkan hasil test sesuai ekspektasi atau *engga*. untuk yang belum tau apa itu assertion bisa [kunjungin disini](https://www.tutorialspoint.com/software_testing_dictionary/assertion_testing.htm)
 
-contoh assertion
+Contoh *assertion*
 
 ```go
   // assert equality
@@ -171,14 +175,14 @@ contoh assertion
   }
 ```
 
-### Mock
-Kalo mau ngelakuin **unit test** kan ga mungkin kita test di ```database production```, bisa aja sih bikin/pisahin jadi ```database testing``` tapi boros banget sama *resource* :'( 
+### b. Mock
+*Kalo mau ngelakuin* **unit test** ga mungkin kita lakukan test di ```database production```. Bisa aja sih, kalo mau pisahin tabel atau bikin *instance* baru buat ```database testing``` tapi hal itu *ribet* dan boros *resource* :'( 
 
-Jadi kita pake Mock ini buat *niruin* data di dalam database
+Jadi kita pake **mock** ini buat *niruin* data di dalam database
 
-### Implement Mock Repository
+### c. Implement Mock Repository
 
-Kita bikin dulu "seakan-akan" MockRepository ini konek ke MySQL/postgres/mongodb etc...
+Kita *bikin* "seakan-akan" MockRepository ini konek ke MySQL/postgres/mongodb etc...
 
 ```repository.go```
 
@@ -232,13 +236,13 @@ func (repository *TestRepositoryMock) FindTodoDetailById(id int) ([]*TodoDetail,
 }
 ```
 
-Pertama kita import dulu package ```github.com/stretchr/testify/mock```, terus kita bikin fungsi-fungsi sesuai dengan *contract* [repository di atas](###repository)
+Pertama kita import dulu package ```github.com/stretchr/testify/mock```, lalu buat fungsi-fungsi yang  sesuai dengan *contract* [repository di atas](###repository)
 
-### Implement Test Scenario
+### d. Implement Test Scenario
 
-Nah *kelar bikin* repository mock nya kita bikin skenario test.
+Nah *kelar bikin* **repository mock** kemudian buat skenario test. File bisa *dikasih* nama ```service_usecase_test.go```. 
 
-kita kasih nama ```service_usecase_test.go``` harus ada ```_test.go``` dibelakang nama filenya ya biar nanti golang test bisa bedain file antara bisnis logic dan skenario test
+**Note:** harus ada ```_test.go``` di belakang nama file *biar nanti* *package golang* ```testing``` bisa bedain antara file yang berisi bisnis logic dan skenario test. Command ``go test`` hanya akan meng-eksekusi file-file yang dibelakannya ada nama ```_test.go```
 
 ```go
 package service
@@ -327,7 +331,7 @@ func TestService_FindTodoFailed(t *testing.T) {
 }
 ```
 
-Nah saya bakal jelasin dikit tentang apa aja yang terjadi di ```service_usecase_test.go```
+Nah saya bakal jelasin *dikit* tentang *apa aja yang terjadi* di ```service_usecase_test.go```
 
 Pertama kita initiate dulu ```RepositoryMock``` biar ```usecase``` kenal sama "database tiruan" yang udah kita bikin
 
@@ -385,13 +389,16 @@ for i := 0; i < numberOfItems; i++ {
 ```
 
 
-### Menjalankan Test
+## 3. Menjalankan Test
 
-Kamu bisa jalanin aplikasinya dengan command
+Sekarang untuk menjalankan *unit-test* bisa dengan command
 
 ```bash
 go test ./service/... -v -cover 
 ```
+
+```./service/...``` merupakan ``base path`` untuk ``go test`` mencari skenario-skenario test yang akan dijalankan
+
 ```-v``` berfungsi untuk melihat detail skenario yang kita testing
 
 ```-cover``` berfungsi untuk melihat coverage testing 
@@ -410,9 +417,11 @@ coverage: 82.1% of statements
 ok      github.com/christianmahardhika/mocktestgolang/service   0.020s  coverage: 82.1% of statements
 ```
 
-## Penutup
-code lengkapnya bisa clone disini ya
-https://github.com/christianmahardhika/mocktestgolang/
+## 4. Penutup
+Code lengkapnya bisa clone disini ya
+```bash
+git clone https://github.com/christianmahardhika/mocktestgolang.git
+```
 
 
 Kamu bisa coba dengan skenario testing / usecase yang sesuai dengan project kamu ;)
