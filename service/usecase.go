@@ -1,62 +1,68 @@
 package service
 
-import(
-  "strconv"
-)
-
 type UseCase interface {
-  SaveTodo(numberOfItems int) (string, error)
+	SaveTodo(todoAll *TodoAll) (string, error)
+	GetTodoDetail(id int) (*TodoAll, error)
+	GetTodos() ([]*Todo, error)
+	DeleteTodo(id int) error
 }
 
 func NewUseCase(repo Repository) UseCase {
-  return &useCase{repo: repo}
+	return &useCase{repo: repo}
 }
 
 type useCase struct {
-  repo Repository
+	repo Repository
+}
+
+// DeleteTodo implements UseCase
+func (*useCase) DeleteTodo(id int) error {
+	panic("unimplemented")
+}
+
+// GetTodos implements UseCase
+func (uc *useCase) GetTodos() ([]*Todo, error) {
+	res, err := uc.repo.FindTodos()
+	if err != nil {
+		return nil, err
+	}
+	return res, nil
 }
 
 // Menyimpan Todo List berdasarkan jumlah detail item
-func (uc *useCase) SaveTodo(numberOfItems int) (string, error){
-  todo := Todo{
-    Title: "this is title",
-  }
-  err := uc.repo.CreateTodo(&todo)
-  if err != nil {
-    return "", err
-  }
+func (uc *useCase) SaveTodo(todoAll *TodoAll) (string, error) {
 
-  for i := 0; i < numberOfItems; i++ {
-    todoDetail := TodoDetail{
-      ID: todo.ID,
-      Item: "item "+ strconv.Itoa(i),
-    }
-    err := uc.repo.CreateTodoDetail(&todoDetail)
-    if err != nil {
-    return "", err
-  }
-  }
+	err := uc.repo.CreateTodo(&todoAll.todo)
+	if err != nil {
+		return "", err
+	}
 
-  return "success", nil
-  
+	for i := 0; i < len(todoAll.todoDetail); i++ {
+		todoDetail := todoAll.todoDetail[i]
+		err := uc.repo.CreateTodoDetail(todoDetail)
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return "success", nil
+
 }
 
 // Menamplikan Todo List sesuai ID
-func (uc *useCase) GetTodoById(id int) (*TodoAll, error){
-  res, err := uc.repo.FindTodoDetailById(id)
-  if err != nil {
-    return nil, err
-  }
-  resTodo, err := uc.repo.FindTodoById(res[0].ID)
-  if err != nil {
-    return nil, err
-  }
-  var todoResult TodoAll
-  todoResult.todoDetail = res
-  todoResult.todo = *resTodo
-  
+func (uc *useCase) GetTodoDetail(id int) (*TodoAll, error) {
+	res, err := uc.repo.FindTodoDetailById(id)
+	if err != nil {
+		return nil, err
+	}
+	resTodo, err := uc.repo.FindTodoById(res[0].ID)
+	if err != nil {
+		return nil, err
+	}
+	var todoResult TodoAll
+	todoResult.todoDetail = res
+	todoResult.todo = *resTodo
 
+	return &todoResult, nil
 
-  return &todoResult, nil
-  
 }
