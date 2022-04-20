@@ -1,50 +1,131 @@
 package service
 
-import "database/sql"
+import (
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
+)
 
 type Repository interface {
-	CreateTodo(todo *Todo) error
-	CreateTodoDetail(todoDetail *TodoDetail) error
-	FindTodoById(id int) (*Todo, error)
-	FindTodoDetailById(id int) ([]*TodoDetail, error)
+	CreateTodo(todo *Todo) (*primitive.ObjectID, error)
+	CreateTodoDetail(todoDetail *TodoDetail) (*primitive.ObjectID, error)
+	FindTodoById(id string) (*Todo, error)
+	FindTodoDetailById(id string) ([]TodoDetail, error)
 	FindTodos() ([]*Todo, error)
-	DeleteTodo(id int) error
+	DeleteTodo(id string) error
+	DeleteTodoDetail(id string) error
 }
 
-func NewRepository(db *sql.DB) Repository {
+func NewRepository(db *mongo.Database) Repository {
 	return &repository{db: db}
 }
 
 type repository struct {
-	db *sql.DB
+	db *mongo.Database
+}
+
+// DeleteTodoDetail implements Repository
+func (repo *repository) DeleteTodoDetail(id string) error {
+	mongoId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	_, err = repo.db.Collection("todo_details").DeleteMany(nil, bson.D{{"todo_id", mongoId}})
+	return err
 }
 
 // CreateTodo implements Repository
-func (*repository) CreateTodo(todo *Todo) error {
-	panic("unimplemented")
+func (repo *repository) CreateTodo(todoParam *Todo) (*primitive.ObjectID, error) {
+	var todo Todo = *todoParam
+	ctx := context.Background()
+	res, err := repo.db.Collection("todos").InsertOne(ctx, todo)
+	id := res.InsertedID.(primitive.ObjectID)
+	return &id, err
 }
 
 // CreateTodoDetail implements Repository
-func (*repository) CreateTodoDetail(todoDetail *TodoDetail) error {
-	panic("unimplemented")
+func (repo *repository) CreateTodoDetail(todoDetail *TodoDetail) (*primitive.ObjectID, error) {
+	res, err := repo.db.Collection("todo_details").InsertOne(nil, todoDetail)
+	id := res.InsertedID.(primitive.ObjectID)
+	return &id, err
 }
 
 // DeleteTodo implements Repository
-func (*repository) DeleteTodo(id int) error {
-	panic("unimplemented")
+func (repo *repository) DeleteTodo(id string) error {
+	mongoId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+	_, err = repo.db.Collection("todos").DeleteOne(nil, bson.D{{"_id", mongoId}})
+	return err
 }
 
 // FindTodoById implements Repository
-func (*repository) FindTodoById(id int) (*Todo, error) {
-	panic("unimplemented")
+func (repo *repository) FindTodoById(id string) (*Todo, error) {
+	ctx := context.Background()
+	mongoId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+	res, err := repo.db.Collection("todos").Find(ctx, bson.D{{"_id", mongoId}})
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close(ctx)
+	result := make([]*Todo, 0)
+	for res.Next(ctx) {
+		var todo Todo
+		err := res.Decode(&todo)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, &todo)
+	}
+	return result[0], nil
 }
 
 // FindTodoDetailById implements Repository
-func (*repository) FindTodoDetailById(id int) ([]*TodoDetail, error) {
-	panic("unimplemented")
+func (repo *repository) FindTodoDetailById(id string) ([]TodoDetail, error) {
+	ctx := context.Background()
+	mongoId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return nil, err
+	}
+	res, err := repo.db.Collection("todo_details").Find(ctx, bson.D{{"todo_id", mongoId}})
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close(ctx)
+	result := make([]TodoDetail, 0)
+	for res.Next(ctx) {
+		var todoDetail TodoDetail
+		err := res.Decode(&todoDetail)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, todoDetail)
+	}
+	return result, nil
 }
 
 // FindTodos implements Repository
-func (*repository) FindTodos() ([]*Todo, error) {
-	panic("unimplemented")
+func (repo *repository) FindTodos() ([]*Todo, error) {
+	ctx := context.Background()
+	res, err := repo.db.Collection("todos").Find(ctx, bson.D{})
+	if err != nil {
+		return nil, err
+	}
+	defer res.Close(ctx)
+	result := make([]*Todo, 0)
+	for res.Next(ctx) {
+		var todo Todo
+		err := res.Decode(&todo)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, &todo)
+	}
+	return result, nil
 }

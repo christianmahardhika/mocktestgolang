@@ -1,10 +1,10 @@
 package service
 
 type UseCase interface {
-	SaveTodo(todoAll *TodoAll) (string, error)
-	GetTodoDetail(id int) (*TodoAll, error)
+	SaveTodo(todoAll *TodoAll) (*TodoAll, error)
+	GetTodoDetail(id string) (*TodoAll, error)
 	GetTodos() ([]*Todo, error)
-	DeleteTodo(id int) error
+	DeleteTodo(id string) error
 }
 
 func NewUseCase(repo Repository) UseCase {
@@ -16,8 +16,12 @@ type useCase struct {
 }
 
 // DeleteTodo implements UseCase
-func (*useCase) DeleteTodo(id int) error {
-	panic("unimplemented")
+func (uc *useCase) DeleteTodo(id string) error {
+	err := uc.repo.DeleteTodoDetail(id)
+	if err != nil {
+		return err
+	}
+	return uc.repo.DeleteTodo(id)
 }
 
 // GetTodos implements UseCase
@@ -30,38 +34,38 @@ func (uc *useCase) GetTodos() ([]*Todo, error) {
 }
 
 // Menyimpan Todo List berdasarkan jumlah detail item
-func (uc *useCase) SaveTodo(todoAll *TodoAll) (string, error) {
-
-	err := uc.repo.CreateTodo(&todoAll.todo)
+func (uc *useCase) SaveTodo(todoAll *TodoAll) (*TodoAll, error) {
+	res, err := uc.repo.CreateTodo(&todoAll.Todo)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	for i := 0; i < len(todoAll.todoDetail); i++ {
-		todoDetail := todoAll.todoDetail[i]
-		err := uc.repo.CreateTodoDetail(todoDetail)
+	for i := 0; i < len(todoAll.TodoDetail); i++ {
+		todoDetail := todoAll.TodoDetail[i]
+		todoDetail.TodoID = *res
+		_, err := uc.repo.CreateTodoDetail(&todoDetail)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
 	}
 
-	return "success", nil
+	return todoAll, nil
 
 }
 
 // Menamplikan Todo List sesuai ID
-func (uc *useCase) GetTodoDetail(id int) (*TodoAll, error) {
+func (uc *useCase) GetTodoDetail(id string) (*TodoAll, error) {
 	res, err := uc.repo.FindTodoDetailById(id)
 	if err != nil {
 		return nil, err
 	}
-	resTodo, err := uc.repo.FindTodoById(res[0].ID)
+	resTodo, err := uc.repo.FindTodoById(id)
 	if err != nil {
 		return nil, err
 	}
 	var todoResult TodoAll
-	todoResult.todoDetail = res
-	todoResult.todo = *resTodo
+	todoResult.TodoDetail = res
+	todoResult.Todo = *resTodo
 
 	return &todoResult, nil
 

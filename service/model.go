@@ -1,17 +1,19 @@
 package service
 
+import "go.mongodb.org/mongo-driver/bson/primitive"
+
 type Todo struct {
-  ID int
-  Title string
+	ID    primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	Title string             `json:"title" bson:"title"`
 }
 
 type TodoDetail struct {
-  ID int
-  TodoID int
-  Item string
+	ID     primitive.ObjectID `json:"id" bson:"_id,omitempty"`
+	TodoID primitive.ObjectID `json:"todo_id" bson:"todo_id"`
+	Item   string             `json:"item" bson:"item"`
 }
 
 type TodoAll struct {
-  todo Todo
-  todoDetail []*TodoDetail
+	Todo       Todo         `json:"todo"`
+	TodoDetail []TodoDetail `json:"todo_detail"`
 }

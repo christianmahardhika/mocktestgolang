@@ -9,8 +9,10 @@ func InitiateServer() *fiber.App {
 	// Initialize the router
 	r := fiber.New()
 
+	// Initialize the database
+	dbConnnection := GetDBConnection()
 	// Initialize the usecase
-	serviceUC := service.NewUseCase(service.NewRepository())
+	serviceUC := service.NewUseCase(service.NewRepository(dbConnnection))
 
 	// Initialize the controller
 	serviceController := service.Controller{UseCase: serviceUC}

@@ -1,8 +1,6 @@
 package service
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -11,13 +9,13 @@ type Controller struct {
 }
 
 func (c *Controller) SaveTodo(ctx *fiber.Ctx) error {
-	todoAll := &TodoAll{}
-	if err := ctx.BodyParser(todoAll); err != nil {
+	saveSpec := new(TodoAll)
+	if err := ctx.BodyParser(saveSpec); err != nil {
 		return ctx.Status(400).JSON("bad request")
 	}
-	res, err := c.UseCase.SaveTodo(todoAll)
+	res, err := c.UseCase.SaveTodo(saveSpec)
 	if err != nil {
-		return ctx.Status(500).JSON("internal server error")
+		return ctx.Status(500).JSON("internal server error " + err.Error())
 	}
 	return ctx.Status(201).JSON(res)
 }
@@ -25,17 +23,13 @@ func (c *Controller) SaveTodo(ctx *fiber.Ctx) error {
 func (c *Controller) FindTodos(ctx *fiber.Ctx) error {
 	res, err := c.UseCase.GetTodos()
 	if err != nil {
-		return ctx.Status(500).JSON("internal server error")
+		return ctx.Status(500).JSON("internal server error " + err.Error())
 	}
 	return ctx.Status(201).JSON(res)
 }
 
 func (c *Controller) FindTodoDetail(ctx *fiber.Ctx) error {
-
-	id, err := strconv.Atoi(ctx.Params("id"))
-	if err != nil {
-		return ctx.Status(400).JSON("bad request")
-	}
+	id := ctx.Query("id")
 	res, err := c.UseCase.GetTodoDetail(id)
 	if err != nil {
 		return ctx.Status(500).JSON("internal server error")
@@ -44,11 +38,8 @@ func (c *Controller) FindTodoDetail(ctx *fiber.Ctx) error {
 }
 
 func (c *Controller) DeleteTodo(ctx *fiber.Ctx) error {
-	id, err := strconv.Atoi(ctx.Params("id"))
-	if err != nil {
-		return ctx.Status(400).JSON("bad request")
-	}
-	err = c.UseCase.DeleteTodo(id)
+	id := ctx.Query("id")
+	err := c.UseCase.DeleteTodo(id)
 	if err != nil {
 		return ctx.Status(500).JSON("internal server error")
 	}
