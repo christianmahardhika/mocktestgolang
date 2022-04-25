@@ -5,12 +5,12 @@ import (
 	"github.com/gofiber/fiber/v2"
 )
 
-func InitiateServer() *fiber.App {
+func InitiateServer(dbString string, dbName string) *fiber.App {
 	// Initialize the router
 	r := fiber.New()
 
 	// Initialize the database
-	dbConnnection := GetDBConnection()
+	dbConnnection := GetDBConnection(dbString, dbName)
 	// Initialize the usecase
 	serviceUC := service.NewUseCase(service.NewRepository(dbConnnection))
 

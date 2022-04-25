@@ -8,9 +8,13 @@ import (
 var FiberApp *fiber.App
 
 func init() {
-	FiberApp = server.InitiateServer()
+
+	dbString := "mongodb://root:root@localhost:27017"
+	dbName := "mocktestgolang"
+	FiberApp = server.InitiateServer(dbString, dbName)
 }
 
 func main() {
-	server.StartApplication(FiberApp, "8080")
+	port := "8080"
+	server.StartApplication(FiberApp, port)
 }

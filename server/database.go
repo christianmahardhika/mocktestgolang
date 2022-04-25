@@ -9,11 +9,11 @@ import (
 
 var dbConn *mongo.Database
 
-func InitDB() {
+func InitDB(dbString string, dbName string) {
 	// Initialize the database
 	var ctx = context.Background()
 	clientOptions := options.Client()
-	clientOptions.ApplyURI("mongodb://root:root@localhost:27017")
+	clientOptions.ApplyURI(dbString)
 	client, err := mongo.NewClient(clientOptions)
 	if err != nil {
 		panic(err)
@@ -22,13 +22,12 @@ func InitDB() {
 	if err != nil {
 		panic(err)
 	}
-
-	dbConn = client.Database("mocktestgolang")
+	dbConn = client.Database(dbName)
 }
 
-func GetDBConnection() *mongo.Database {
+func GetDBConnection(dbString string, dbName string) *mongo.Database {
 	if dbConn == nil {
-		InitDB()
+		InitDB(dbString, dbName)
 		return dbConn
 	} else {
 		return dbConn

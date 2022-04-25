@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -74,6 +75,9 @@ func (repo *repository) FindTodoById(id string) (*Todo, error) {
 		return nil, err
 	}
 	defer res.Close(ctx)
+	if res.RemainingBatchLength() < 1 {
+		return nil, errors.New("no todo found")
+	}
 	result := make([]*Todo, 0)
 	for res.Next(ctx) {
 		var todo Todo
@@ -98,6 +102,9 @@ func (repo *repository) FindTodoDetailById(id string) ([]TodoDetail, error) {
 		return nil, err
 	}
 	defer res.Close(ctx)
+	if res.RemainingBatchLength() < 1 {
+		return nil, errors.New("no todo detail found")
+	}
 	result := make([]TodoDetail, 0)
 	for res.Next(ctx) {
 		var todoDetail TodoDetail

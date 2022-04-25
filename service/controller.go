@@ -9,11 +9,11 @@ type Controller struct {
 }
 
 func (c *Controller) SaveTodo(ctx *fiber.Ctx) error {
-	saveSpec := new(TodoAll)
-	if err := ctx.BodyParser(saveSpec); err != nil {
+	saveSpec := TodoAll{}
+	if err := ctx.BodyParser(&saveSpec); err != nil {
 		return ctx.Status(400).JSON("bad request")
 	}
-	res, err := c.UseCase.SaveTodo(saveSpec)
+	res, err := c.UseCase.SaveTodo(&saveSpec)
 	if err != nil {
 		return ctx.Status(500).JSON("internal server error " + err.Error())
 	}
@@ -25,16 +25,16 @@ func (c *Controller) FindTodos(ctx *fiber.Ctx) error {
 	if err != nil {
 		return ctx.Status(500).JSON("internal server error " + err.Error())
 	}
-	return ctx.Status(201).JSON(res)
+	return ctx.Status(200).JSON(res)
 }
 
 func (c *Controller) FindTodoDetail(ctx *fiber.Ctx) error {
 	id := ctx.Query("id")
 	res, err := c.UseCase.GetTodoDetail(id)
 	if err != nil {
-		return ctx.Status(500).JSON("internal server error")
+		return ctx.Status(500).JSON("internal server error " + err.Error())
 	}
-	return ctx.Status(201).JSON(res)
+	return ctx.Status(200).JSON(res)
 }
 
 func (c *Controller) DeleteTodo(ctx *fiber.Ctx) error {
