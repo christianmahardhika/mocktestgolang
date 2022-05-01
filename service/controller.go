@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+
 	"github.com/gofiber/fiber/v2"
 )
 
@@ -13,7 +15,8 @@ func (c *Controller) SaveTodo(ctx *fiber.Ctx) error {
 	if err := ctx.BodyParser(&saveSpec); err != nil {
 		return ctx.Status(400).JSON("bad request")
 	}
-	res, err := c.UseCase.SaveTodo(&saveSpec)
+	context := context.Background()
+	res, err := c.UseCase.SaveTodo(context, &saveSpec)
 	if err != nil {
 		return ctx.Status(500).JSON("internal server error " + err.Error())
 	}

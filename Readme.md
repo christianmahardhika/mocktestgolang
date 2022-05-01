@@ -1,433 +1,175 @@
-# Unit testing dengan Mock Repository pada Golang
+# Implement Graceful Shutdown pada Golang dengan Fiber Http Server
 
-*preface*: ini adalah tulisan pertama saya di medium. Semoga betah membacanya, ya :D 
+## **Pendahuluan**
 
-Tulisan perdana ini, saya akan membahas tentang ***unit-test*** **di Golang**. 
+Kita perlu untuk memastikan aplikasi sudah menyelesaikan setiap request sebelum aplikasi tersebut restart, scale down, atau mati agar user *experience tetap terjaga*. Pada post kali ini saya ingin menjelaskan bagaimana cara menjalaknan proses tersebut dengan graceful shutdown yang terintegrasi dengan signal shutdown process. *Gracefull shutdown* adalah sebuah kondisi dimana sebuah sistem dimatikan secara sengaja oleh user / maintener melalui rangkaian proses yang aman sehingga data / proses yang sedang diolah oleh sistem tidak rusak.
 
-*Unit test* merupakan hal penting dalam proses *develop* sebuah aplikasi, dengan unit-test kita dapat mengetahui aplikasi kita berjalan sesuai dengan ekspektasi atau justru malah banyak *error* :sad
+## **Signal Shutdown**
 
-Unit Test juga dapat diintegrasikan dengan **CICD** (*Continous Integration Continous Deployment*) agar kualitas code kita terjaga dan tetap sesuai dengan ekspektasi bisnis model yang direncanakan. Terkait proses integrasi ke **CICD** akan dibahas ditulisan selanjutnya ya ;)
-
-Oke, cukup "pengantar"-nya. Sekarang langsung *cuss* ke pembahasan, ya.
-
-## 1. Arsitektur & Bisnis Use Case Aplikasi
-Tutorial ini kita akan membuat aplikasi *backend* pencatat ***Todo App***. Dalam aplikasi ini terdapat beberapa layer yang memisahkan *entity* *bisnis logic* dengan *repository* (data) 
+Pada saat sebuah sistem akan dimatikan, sistem operasi akan mengirimkan sinyal yang menandakan bahwa proses dari sistem akan berakhir. Beberapa tanda atau signal dalam proses shutdown pada operating system dapat dilihat seperti dabel dibawah:
 
 ```text
- ./service
-    model.go
-    respository.go
-    usecase.go
-main.go
+Signal	    Value	Action	Comment
+
+SIGTERM	    15	    Term	Termination signal
+SIGINT  	2	    Term	Famous CONTROL+C interrupt from keyboard
+SIGQUIT	    3	    Core	CONTRL+\ or quit from keyboard
+SIGABRT	    6	    Core	Abort signal
+SIGKILL	    9	    Term	Kill signal
 ```
 
-### a. Model
-Model berisi *entity* atau data model pada sebuah domain. *Entity* pada tutorial ini berupa objek yang berisi kumpulan *data structure* yang merepresentasikan domain Aplikasi Todo. 
+Penjelasan lebih lanjut terkait tentang signal OS dapat *mampir* ke sumber bawah ini:
 
-*Kalo diibaratkan* model disini jadi *column* atau *field* pada database/rest-api. 
+[sumber 1](https://github.com/drbeco/killgracefully) | [sumber 2](https://man7.org/linux/man-pages/man7/signal.7.html)
 
-Untuk lebih jelasnya bisa kepo [kesini](https://www.tutorialspoint.com/dbms/er_model_basic_concepts.htm) atau [sini](https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html)
+## **Urutan Mematikan Sistem**
 
-Nah, kita buat dulu ```model.go```
-```go
-package service
+Aplikasi ini terhubung dengan beberapa *service* yaitu `database` sebagai peyimpanan data, `http server` untuk men-*delivery* aplikasi ke *client*
 
-type Todo struct {
-  ID int
-  Title string
-}
+Dalam kasus aplikasi Todo, berikut urutan dalam mematikan aplikasi:
 
-type TodoDetail struct {
-  ID int
-  TodoID int
-  Item string
-}
+- Matikan *incoming request* dari `http server`
+- Tunggu proses yang sedang berjalan setelah *request* dimatikan
+- Matikan koneksi `database`
+- Aplikasi mati / berakhir
+## **Code**
 
-type TodoAll struct {
-  todo Todo
-  todoDetail []*TodoDetail
-}
-```
+ Ketika signal yang menginformasikan bahwa aplikasi akan mati, proses ***graceful shutdown*** akan dimulai. Aplikasi akan melakukan *listen* terhadap `os signal`,dengan memanfaatkan fitur `goroutines` kita dapat mengimplementasikan ***graceful shutdown*** 
 
-Model yang kita buat terdiri dari *entity* **Todo**, **TodoDetail**, dan **TodoAll**
+*code* dapat dilihat seperti dibawah ini:
 
-### b. Repository
-
-Bertugas sebagai sumber data pada aplikasi. *Business use case* / *logic* aplikasi berinteraksi dengan database melalui **repository**. Kalo pengen tau mendalam tentang apa itu **repository** bisa [kemari](https://medium.com/@Dewey92/repository-pattern-what-e47ddee3364d) 
-
-Yuk, mari buat ```repository.go```
+`main.go`
 
 ```go
-package service
+package main
 
-type Repository interface {
-  CreateTodo(todo *Todo) error 
-  CreateTodoDetail(todoDetail *TodoDetail) error
-  FindTodoById(id int) (*Todo, error)
-  FindTodoDetailById(id int) ([]*TodoDetail, error)
-}
-```
-
-Pada tutorial ini kita cuma define [*contract*](https://refactoring.guru/design-patterns/abstract-factory) atau *interface*-nya dari **repository**.
-
-### c. Use Case
-
-Nah disini, berisi fitur *logic* aplikasinya mau/bisa ngapain aja. Jadi *use case* disini merupakan representasi dari *bisnis logic* dari suatu aplikasi aplikasi (dalam hal ini **Aplikasi Todo**)
-
-Kita *namain* filenya ```usecase.go```
-```go
-package service
-
-import(
-  "strconv"
+import (
+	"github.com/christianmahardhika/mocktestgolang/server"
+	"github.com/gofiber/fiber/v2"
 )
 
-type UseCase interface {
-  SaveTodo(numberOfItems int) (string, error)
+var FiberApp *fiber.App
+
+func init() {
+
+	dbString := "mongodb://root:root@localhost:27017"
+	dbName := "mocktestgolang"
+	FiberApp = server.InitiateServer(dbString, dbName)
 }
 
-func NewUseCase(repo Repository) UseCase {
-  return &useCase{repo: repo}
+func main() {
+	port := "8080"
+
+	server.ShutdownApplication(FiberApp)
+
+	server.StartApplication(FiberApp, port)
+
+	server.CleanUpApplication()
 }
 
-type useCase struct {
-  repo Repository
-}
-
-// Menyimpan Todo List berdasarkan jumlah detail item
-func (uc *useCase) SaveTodo(numberOfItems int) (string, error){
-  todo := Todo{
-    Title: "this is title",
-  }
-  err := uc.repo.CreateTodo(&todo)
-  if err != nil {
-    return "", err
-  }
-
-  for i := 0; i < numberOfItems; i++ {
-    todoDetail := TodoDetail{
-      ID: todo.ID,
-      Item: "item "+ strconv.Itoa(i),
-    }
-    err := uc.repo.CreateTodoDetail(&todoDetail)
-    if err != nil {
-    return "", err
-  }
-  }
-
-  return "success", nil
-  
-}
-
-// Menamplikan Todo List sesuai ID
-func (uc *useCase) GetTodoById(id int) (*TodoAll, error){
-  res, err := uc.repo.FindTodoDetailById(id)
-  if err != nil {
-    return nil, err
-  }
-  resTodo, err := uc.repo.FindTodoById(res[0].ID)
-  if err != nil {
-    return nil, err
-  }
-  var todoResult TodoAll
-  todoResult.todoDetail = res
-  todoResult.todo = *resTodo
-
-  return &todoResult, nil
-  
-}
 ```
 
-Aplikasi punya kemampuan untuk menyimpan dan menampilkan **list todo**
-
-## 2. Testing Usecase
-
-Nah sampe juga di ***part*** yang ditunggu. Disini kita akan pake *package* [testify](https://github.com/stretchr/testify) karena lengkap sudah ada fungsi [assertion](https://github.com/stretchr/testify#assert-package) dan [mock](https://github.com/stretchr/testify#mock-package). 
-
-Cara install bisa *ikutin* cara di bawah ***yaaa!***
-
-```bash
-go get github.com/stretchr/testify
-```
-
-### a. Assertion
-fungsi nya untuk membandingkan hasil test sesuai ekspektasi atau *engga*. untuk yang belum tau apa itu assertion bisa [kunjungin disini](https://www.tutorialspoint.com/software_testing_dictionary/assertion_testing.htm)
-
-Contoh *assertion*
+`runner.go`
 
 ```go
-  // assert equality
-  assert.Equal(t, 123, 123, "they should be equal")
+package server
 
-  // assert inequality
-  assert.NotEqual(t, 123, 456, "they should not be equal")
+import (
+	"context"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-  // assert for nil (good for errors)
-  assert.Nil(t, object)
-
-  // assert for not nil (good when you expect something)
-  if assert.NotNil(t, object) {
-
-    // now we know that object isn't nil, we are safe to make
-    // further assertions without causing any errors
-    assert.Equal(t, "Something", object.Value)
-
-  }
-```
-
-### b. Mock
-*Kalo mau ngelakuin* **unit test** ga mungkin kita lakukan test di ```database production```. Bisa aja sih, kalo mau pisahin tabel atau bikin *instance* baru buat ```database testing``` tapi hal itu *ribet* dan boros *resource* :'( 
-
-Jadi kita pake **mock** ini buat *niruin* data di dalam database
-
-### c. Implement Mock Repository
-
-Kita *bikin* "seakan-akan" MockRepository ini konek ke MySQL/postgres/mongodb etc...
-
-```repository.go```
-
-```go
-package service
-
-import(
-  "errors"
-  "github.com/stretchr/testify/mock"
-)
-type TestRepositoryMock struct {
-	Mock mock.Mock
-}
-
-func (repository *TestRepositoryMock) CreateTodo(todo *Todo) error {
-	arguments := repository.Mock.Called(todo)
-	if arguments.Get(0) == nil {
-		return errors.New("Error CreateTodo")
-	} else {
-		return nil
-	}
-}
-
-func (repository *TestRepositoryMock) CreateTodoDetail(todo *TodoDetail) error {
-	arguments := repository.Mock.Called(todo)
-	if arguments.Get(0) == nil {
-		return errors.New("Error CreateTodoDetail")
-	} else {
-		return nil
-	}
-}
-
-func (repository *TestRepositoryMock) FindTodoById(id int) (*Todo, error) {
-	arguments := repository.Mock.Called(id)
-	if arguments.Get(0) == nil {
-		return nil, errors.New("Error")
-	} else {
-    todo := arguments.Get(0).(*Todo)
-		return todo, nil
-	}
-}
-
-func (repository *TestRepositoryMock) FindTodoDetailById(id int) ([]*TodoDetail, error) {
-	arguments := repository.Mock.Called(id)
-	if arguments.Get(0) == nil {
-		return nil, errors.New("Error")
-	} else {
-		todo := arguments.Get(0).([]*TodoDetail)
-		return todo, nil
-	}
-}
-```
-
-Pertama kita import dulu package ```github.com/stretchr/testify/mock```, lalu buat fungsi-fungsi yang  sesuai dengan *contract* [repository di atas](###repository)
-
-### d. Implement Test Scenario
-
-Nah *kelar bikin* **repository mock** kemudian buat skenario test. File bisa *dikasih* nama ```service_usecase_test.go```. 
-
-**Note:** harus ada ```_test.go``` di belakang nama file *biar nanti* *package golang* ```testing``` bisa bedain antara file yang berisi bisnis logic dan skenario test. Command ``go test`` hanya akan meng-eksekusi file-file yang dibelakannya ada nama ```_test.go```
-
-```go
-package service
-
-import(
-  "testing"
-  "github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
+	"github.com/gofiber/fiber/v2"
 )
 
-var repository = &TestRepositoryMock{Mock: mock.Mock{}}
-var testService = useCase{repo: repository}
+func StartApplication(r *fiber.App, port string) {
 
-func TestService_SaveTodoSuccess(t *testing.T) {
-  // Mock Entity Todo
-  todo := Todo{
-    Title: "this is title",
-  }
+	// Start the server
+	err := r.Listen(":" + port)
+	if err != nil {
+		panic(err)
+	}
 
-  // Mock Entity TodoDetail
-  todoDetail1 := TodoDetail{
-      ID: todo.ID,
-      Item: "item 0",
-    }
-  todoDetail2 := TodoDetail{
-      ID: todo.ID,
-      Item: "item 1",
-    }
-  todoDetail3 := TodoDetail{
-      ID: todo.ID,
-      Item: "item 2",
-    }
-  repository.Mock.On("CreateTodo", &todo).Return(todo)
-  repository.Mock.On("CreateTodoDetail", &todoDetail1).Return(todoDetail1)
-  repository.Mock.On("CreateTodoDetail", &todoDetail2).Return(todoDetail2)
-  repository.Mock.On("CreateTodoDetail", &todoDetail3).Return(todoDetail3)
-  result, err := testService.SaveTodo(3)
-  assert.Nil(t, err)
-	assert.NotNil(t, result)
 }
 
-func TestService_FindTodoSuccess(t *testing.T) {
-  // Mock Entity Todo
-  todo := Todo{
-    ID: 1,
-    Title: "this is title",
-  }
+func ShutdownApplication(r *fiber.App) {
 
-  // Mock Entity TodoDetail Array
-  todoDetail := []*TodoDetail{
-    {
-      ID: 1,
-    TodoID: todo.ID,
-      Item: "item 1",
-    },
-  {
-      ID: 2,
-    TodoID: todo.ID,
-      Item: "item 2",
-    },
-  {
-      ID: 3,
-    TodoID: todo.ID,
-      Item: "item 3",
-    },
-  }
-
-  var todoAll TodoAll
-  todoAll.todo = todo
-  todoAll.todoDetail = todoDetail
-  
-  repository.Mock.On("FindTodoDetailById", 1).Return(todoDetail)
-  repository.Mock.On("FindTodoById", 1).Return(&todo)
-  result, err := testService.GetTodoById(1)
-  assert.Nil(t, err)
-	assert.NotNil(t, result)
-  assert.Equal(t, &todoAll, result, "the result should be equal")
+	// Implement graceful shutdown
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM,
+		syscall.SIGQUIT)
+	go func() {
+		_ = <-ctx.Done()
+		log.Println("Gracefully shutting down...")
+		_ = r.Shutdown()
+		stop()
+	}()
 }
 
-func TestService_FindTodoFailed(t *testing.T) {
-  repository.Mock.On("FindTodoDetailById", 5).Return(nil)
-  repository.Mock.On("FindTodoById", 5).Return(nil)
-  result, err := testService.GetTodoById(5)
-  assert.Nil(t, result)
-	assert.NotNil(t, err)
+func CleanUpApplication() {
+	log.Println("Running cleanup tasks...")
+	// wait 2 seconds for the server to shutdown
+	time.Sleep(2 * time.Second)
+	context.WithTimeout(context.Background(), 5*time.Second)
+	DBCloseConnection()
+	log.Println("Finish cleanup tasks...")
 }
 ```
 
-Nah saya bakal jelasin *dikit* tentang *apa aja yang terjadi* di ```service_usecase_test.go```
-
-Pertama kita initiate dulu ```RepositoryMock``` biar ```usecase``` kenal sama "database tiruan" yang udah kita bikin
+`database.go`
 
 ```go
-var repository = &TestRepositoryMock{Mock: mock.Mock{}}
-var testService = useCase{repo: repository}
-```
-#### Skenario test
-Disini ada 6 skenario yang dijalankan kalian bisa bikin skenario sendiri sesuai kebutuhan project
+package server
 
-```text
-TestService_SaveTodoSuccess
-TestService_SaveTodoSuccess 
-TestService_FindTodoSuccess
-TestService_FindTodoSuccess
-TestService_FindTodoFailed
-TestService_FindTodoFailed
-```
+import (
+	"context"
+	"log"
 
-#### Code ini ngapain sih?
-```go
-repository.Mock.On("CreateTodoDetail", &todoDetail1).Return(todoDetail1)
-```
-Code tersebut memanggil *contract repsository* ```CreateTodoDetail``` dengan kondisi jika dapet input ```&todoDetail1``` akan mengembalikan nilai ```todoDetail1```. 
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
+)
 
-Jika ```Return(nil)``` berarti "database" tidak menampilkan apa-apa seakan data tidak ditemukan di database.
+var dbConn *mongo.Database
 
-```go
-repository.Mock.On("FindTodoById", 10).Return(nil)
-```
+func InitDB(dbString string, dbName string) {
+	// Initialize the database
+	var ctx = context.Background()
+	clientOptions := options.Client()
+	clientOptions.ApplyURI(dbString)
+	client, err := mongo.NewClient(clientOptions)
+	if err != nil {
+		panic(err)
+	}
+	err = client.Connect(ctx)
+	if err != nil {
+		panic(err)
+	}
+	dbConn = client.Database(dbName)
+}
 
-#### Loop test mock data
-Karena pada usecase *si-aplikasi* ngelakuin looping terhadap fungsi ```CreateTodoDetail```, jadi harus bikin **Mock data TodoDetail** yang jumlahnya sesuai dengan jumlah loop yang dilakukan di aplikasi (pada kasus kali ini dibikin 3 kali loop)
+func GetDBConnection(dbString string, dbName string) *mongo.Database {
+	if dbConn == nil {
+		InitDB(dbString, dbName)
+		return dbConn
+	} else {
+		return dbConn
+	}
+}
 
-Mock yang dibikin sejumlah loop yang dilakukan
-```go
-repository.Mock.On("CreateTodoDetail", &todoDetail1).Return(todoDetail1)
-repository.Mock.On("CreateTodoDetail", &todoDetail2).Return(todoDetail2)
-repository.Mock.On("CreateTodoDetail", &todoDetail3).Return(todoDetail3)
-```
-
-Fungsi loop pada Use Case
-
-```go
-for i := 0; i < numberOfItems; i++ {
-    todoDetail := TodoDetail{
-      ID: todo.ID,
-      Item: "item "+ strconv.Itoa(i),
-    }
-    err := uc.repo.CreateTodoDetail(&todoDetail)
-    if err != nil {
-    return "", err
-  }
-  }
+func DBCloseConnection() {
+	if dbConn != nil {
+		dbConn.Client().Disconnect(nil)
+	}
+	log.Println("database connection closed")
+}
 ```
 
+## **Implementasi selanjutnya**
 
-## 3. Menjalankan Test
+Jika aplikasi terhubung dengan koneksi selain `databas`e misal `message broker` atau koneksi ke *service* lain bisa dimasukan juga ke prosedur / tahapan ***Graceful Shutdown*** aplikasi sesuai dengan kebutuhan.
 
-Sekarang untuk menjalankan *unit-test* bisa dengan command
+## **Kesimpulan**
 
-```bash
-go test ./service/... -v -cover 
-```
-
-```./service/...``` merupakan ``base path`` untuk ``go test`` mencari skenario-skenario test yang akan dijalankan
-
-```-v``` berfungsi untuk melihat detail skenario yang kita testing
-
-```-cover``` berfungsi untuk melihat coverage testing 
-
-nanti kalo berhasil hasilnya bakal kaya gini:
-```bash
-go test ./service/... -v -cover
-=== RUN   TestService_SaveTodoSuccess
---- PASS: TestService_SaveTodoSuccess (0.00s)
-=== RUN   TestService_FindTodoSuccess
---- PASS: TestService_FindTodoSuccess (0.00s)
-=== RUN   TestService_FindTodoFailed
---- PASS: TestService_FindTodoFailed (0.00s)
-PASS
-coverage: 82.1% of statements
-ok      github.com/christianmahardhika/mocktestgolang/service   0.020s  coverage: 82.1% of statements
-```
-
-## 4. Penutup
-Code lengkapnya bisa clone disini ya
-```bash
-git clone https://github.com/christianmahardhika/mocktestgolang.git
-```
-
-
-Kamu bisa coba dengan skenario testing / usecase yang sesuai dengan project kamu ;)
-
-Setelah tutorial unit-test ini akan dibuat tutorial Integration-Test yang pastinya bakal lebih seru :D
-
-
-
-Happy Testing!!! :D
+Berikut repository yang bisa teman-teman clone jika ingin eksplore lebih dalam atau mau *kulik-kulik* sendiri terkait dengan ***Graceful Shutdown***. Sampai jumpa pada artikel selanjutnya tentang Software Engineer ing ;D

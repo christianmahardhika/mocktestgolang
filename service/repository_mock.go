@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"errors"
 
 	"github.com/stretchr/testify/mock"
@@ -11,7 +12,7 @@ type TestRepositoryMock struct {
 	Mock mock.Mock
 }
 
-func (repository *TestRepositoryMock) CreateTodo(todo *Todo) (*primitive.ObjectID, error) {
+func (repository *TestRepositoryMock) CreateTodo(ctx context.Context, todo *Todo) (*primitive.ObjectID, error) {
 	arguments := repository.Mock.Called(todo)
 	if arguments.Get(0) == nil {
 		return nil, errors.New("error CreateTodo")
@@ -20,7 +21,7 @@ func (repository *TestRepositoryMock) CreateTodo(todo *Todo) (*primitive.ObjectI
 	}
 }
 
-func (repository *TestRepositoryMock) CreateTodoDetail(todo *TodoDetail) (*primitive.ObjectID, error) {
+func (repository *TestRepositoryMock) CreateTodoDetail(ctx context.Context, todo *TodoDetail) (*primitive.ObjectID, error) {
 	arguments := repository.Mock.Called(todo)
 	if arguments.Get(0) == nil {
 		return nil, errors.New("error CreateTodoDetail")

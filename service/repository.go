@@ -10,8 +10,8 @@ import (
 )
 
 type Repository interface {
-	CreateTodo(todo *Todo) (*primitive.ObjectID, error)
-	CreateTodoDetail(todoDetail *TodoDetail) (*primitive.ObjectID, error)
+	CreateTodo(ctx context.Context, todo *Todo) (*primitive.ObjectID, error)
+	CreateTodoDetail(ctx context.Context, todoDetail *TodoDetail) (*primitive.ObjectID, error)
 	FindTodoById(id string) (*Todo, error)
 	FindTodoDetailById(id string) ([]TodoDetail, error)
 	FindTodos() ([]*Todo, error)
@@ -38,17 +38,16 @@ func (repo *repository) DeleteTodoDetail(id string) error {
 }
 
 // CreateTodo implements Repository
-func (repo *repository) CreateTodo(todoParam *Todo) (*primitive.ObjectID, error) {
+func (repo *repository) CreateTodo(ctx context.Context, todoParam *Todo) (*primitive.ObjectID, error) {
 	var todo Todo = *todoParam
-	ctx := context.Background()
 	res, err := repo.db.Collection("todos").InsertOne(ctx, todo)
 	id := res.InsertedID.(primitive.ObjectID)
 	return &id, err
 }
 
 // CreateTodoDetail implements Repository
-func (repo *repository) CreateTodoDetail(todoDetail *TodoDetail) (*primitive.ObjectID, error) {
-	res, err := repo.db.Collection("todo_details").InsertOne(nil, todoDetail)
+func (repo *repository) CreateTodoDetail(ctx context.Context, todoDetail *TodoDetail) (*primitive.ObjectID, error) {
+	res, err := repo.db.Collection("todo_details").InsertOne(ctx, todoDetail)
 	id := res.InsertedID.(primitive.ObjectID)
 	return &id, err
 }

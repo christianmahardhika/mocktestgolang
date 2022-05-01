@@ -1,7 +1,12 @@
 package service
 
+import (
+	"context"
+	"time"
+)
+
 type UseCase interface {
-	SaveTodo(todoAll *TodoAll) (*TodoAll, error)
+	SaveTodo(ctx context.Context, todoAll *TodoAll) (*TodoAll, error)
 	GetTodoDetail(id string) (*TodoAll, error)
 	GetTodos() ([]*Todo, error)
 	DeleteTodo(id string) error
@@ -34,8 +39,9 @@ func (uc *useCase) GetTodos() ([]*Todo, error) {
 }
 
 // Menyimpan Todo List berdasarkan jumlah detail item
-func (uc *useCase) SaveTodo(todoAll *TodoAll) (*TodoAll, error) {
-	res, err := uc.repo.CreateTodo(&todoAll.Todo)
+func (uc *useCase) SaveTodo(ctx context.Context, todoAll *TodoAll) (*TodoAll, error) {
+	time.Sleep(time.Second * 3)
+	res, err := uc.repo.CreateTodo(ctx, &todoAll.Todo)
 	if err != nil {
 		return nil, err
 	}
@@ -43,12 +49,13 @@ func (uc *useCase) SaveTodo(todoAll *TodoAll) (*TodoAll, error) {
 	for i := 0; i < len(todoAll.TodoDetail); i++ {
 		todoDetail := todoAll.TodoDetail[i]
 		todoDetail.TodoID = *res
-		_, err := uc.repo.CreateTodoDetail(&todoDetail)
+		_, err := uc.repo.CreateTodoDetail(ctx, &todoDetail)
 		if err != nil {
 			return nil, err
 		}
 	}
 
+	ctx.Done()
 	return todoAll, nil
 
 }

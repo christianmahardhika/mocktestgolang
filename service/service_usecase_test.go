@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -60,7 +61,7 @@ func TestService_SaveTodoSuccess(t *testing.T) {
 	repo.Mock.On("CreateTodoDetail", &todoDetail1).Return(todoDetail1)
 	repo.Mock.On("CreateTodoDetail", &todoDetail2).Return(todoDetail2)
 	repo.Mock.On("CreateTodoDetail", &todoDetail3).Return(todoDetail3)
-	result, err := testService.SaveTodo(&todoAll)
+	result, err := testService.SaveTodo(context.Background(), &todoAll)
 	assert.Nil(t, err)
 	assert.NotNil(t, result)
 }

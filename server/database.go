@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log"
 
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -32,4 +33,11 @@ func GetDBConnection(dbString string, dbName string) *mongo.Database {
 	} else {
 		return dbConn
 	}
+}
+
+func DBCloseConnection() {
+	if dbConn != nil {
+		dbConn.Client().Disconnect(nil)
+	}
+	log.Println("database connection closed")
 }

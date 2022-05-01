@@ -16,5 +16,10 @@ func init() {
 
 func main() {
 	port := "8080"
+
+	server.ShutdownApplication(FiberApp)
+
 	server.StartApplication(FiberApp, port)
+
+	server.CleanUpApplication()
 }
