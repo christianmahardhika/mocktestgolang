@@ -172,4 +172,4 @@ Jika aplikasi terhubung dengan koneksi selain `databas`e misal `message broker` 
 
 ## **Kesimpulan**
 
-Berikut repository yang bisa teman-teman clone jika ingin eksplore lebih dalam atau mau *kulik-kulik* sendiri terkait dengan ***Graceful Shutdown***. Sampai jumpa pada artikel selanjutnya tentang Software Engineer ing ;D
+Berikut repository yang bisa teman-teman clone https://github.com/christianmahardhika/mocktestgolang/tree/graceful-shutdown jika ingin eksplore lebih dalam atau mau *kulik-kulik* sendiri terkait dengan ***Graceful Shutdown***. Sampai jumpa pada artikel selanjutnya tentang Software Engineer ing ;D
