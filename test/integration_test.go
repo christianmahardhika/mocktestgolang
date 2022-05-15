@@ -14,6 +14,7 @@ type integrationTestSuite struct {
 	dbConnString string
 	dbName       string
 	port         string
+	serverHost   string
 }
 
 func RunIntegrationTestSuite(t *testing.T) {
@@ -21,11 +22,12 @@ func RunIntegrationTestSuite(t *testing.T) {
 }
 
 func (s *integrationTestSuite) SetupTestServer(t *testing.T) {
-	dbString := "mongodb://root:root@localhost:27017"
+	s.dbConnString = "mongodb://root:root@localhost:27017"
 	dbName := "mocktestgolang_test"
-	FiberApp := server.InitiateServer(dbString, dbName)
-	port := "8080"
-	server.StartApplication(FiberApp, port)
+	FiberApp := server.InitiateServer(s.dbConnString, dbName)
+	s.port = "8080"
+	s.serverHost = "localhost"
+	server.StartApplication(FiberApp, s.port)
 }
 
 func (s *integrationTestSuite) Test_Integration_CreateTodo(t *testing.T) {
@@ -45,7 +47,7 @@ func (s *integrationTestSuite) Test_Integration_CreateTodo(t *testing.T) {
 			}
 		]
 	}`
-	req, err := http.NewRequest("POST", "http://localhost:8080/todo", strings.NewReader(requestPayload))
+	req, err := http.NewRequest("POST", "http://"+s.serverHost+":"+s.port+"/todo", strings.NewReader(requestPayload))
 	s.NoError(err)
 
 	req.Header.Set("Content-Type", "application/json")
